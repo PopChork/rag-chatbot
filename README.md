@@ -29,6 +29,7 @@ The project was designed for querying lecture notes and evaluating retrieval qua
 
 ## Project Structure
 
+```text
 RAG-CHATBOT/
 ├── app/
 │   ├── main.py                 # FastAPI routes
@@ -53,4 +54,3 @@ RAG-CHATBOT/
 ├── docker-compose.yml
 ├── Dockerfile
 └── requirements.txt
->>>>>>> 7bedf8c (Initial RAG chatbot implementation)
