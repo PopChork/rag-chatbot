@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Environment / secrets
+.env
+.env.*
+
+# Uploaded/private documents
+data/uploads/*
+!data/uploads/.gitkeep
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.vscode/
+
+# Optional: generated review files if they contain lecture-note text
+evaluation/faithfulness_review.csv
+evaluation/faithfulness_review_filled.csv
+evaluation/tuning_results.csv
