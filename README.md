@@ -1,123 +1,189 @@
 # RAG Chatbot for Lecture Notes
 
-A FastAPI-based Retrieval-Augmented Generation (RAG) chatbot for querying lecture notes and other PDF/TXT documents. The system extracts text from uploaded files, splits the text into overlapping chunks, embeds the chunks with SentenceTransformers, stores them in Qdrant, retrieves relevant context for a user query, and generates grounded answers using a local Ollama LLM.
+A full-stack Retrieval-Augmented Generation (RAG) chatbot for querying PDF/TXT documents. The system ingests documents, extracts text, chunks content, generates embeddings, stores vectors in Qdrant, retrieves relevant source chunks, and generates grounded answers using a local Ollama LLM.
 
-This project was built as a practical lecture-note assistant and includes retrieval evaluation scripts for testing chunking and top-k settings using manually prepared question-answer pairs.
+The project includes:
+
+- A **FastAPI backend** for document upload, retrieval, answering, and evaluation
+- A **Qdrant vector database** for semantic search
+- A **local Ollama LLM** for answer generation
+- A **React/Next.js frontend** for uploading documents and chatting with the indexed content
+- Evaluation scripts for retrieval accuracy, answer correctness, faithfulness, and latency
+
+---
 
 ## Key Features
 
-- Upload and index PDF or TXT documents through a FastAPI endpoint
+### Backend
+
+- Upload and index PDF/TXT documents
 - Extract page-level text from PDFs using `pypdf`
-- Split documents into overlapping chunks with configurable chunk size and overlap
+- Split documents into overlapping chunks
 - Generate normalized embeddings using SentenceTransformers
 - Store and search document chunks in Qdrant using cosine similarity
-- Retrieve top-k source chunks for a query, optionally filtered by document ID
-- Generate grounded answers using a local Ollama model
-- Return source metadata including filename, page number, source reference, similarity score, and retrieved context
-- Evaluate retrieval quality using Recall@k, Mean Reciprocal Rank (MRR), and retrieval latency
+- Retrieve top-k source chunks for a query
+- Generate grounded answers using Ollama
+- Return source metadata, page numbers, retrieval scores, and retrieved context
+- List indexed documents
+- Evaluate retrieval quality using Recall@K, MRR, and latency
 - Support manual faithfulness review of generated answers
+
+### Frontend
+
+- Upload PDF/TXT files from a browser UI
+- Show indexed documents with document ID, page count, and chunk count
+- Ask questions through a chat-style interface
+- Display generated answers
+- Show retrieved source filenames and page numbers
+- Show retrieval similarity scores
+- Expand source chunks used by the LLM
+
+---
 
 ## Tech Stack
 
 | Area | Tools |
 |---|---|
+| Frontend | Next.js, React, TypeScript, Tailwind CSS |
 | Backend API | FastAPI, Uvicorn |
 | Vector database | Qdrant |
 | Embeddings | SentenceTransformers |
 | LLM runtime | Ollama |
 | PDF parsing | pypdf |
-| Evaluation | Custom Python scripts, CSV/JSONL |
+| Evaluation | Custom Python scripts, JSONL, CSV |
 | Containerization | Docker, Docker Compose |
+
+---
 
 ## System Architecture
 
 ```mermaid
 flowchart LR
-    A[PDF/TXT Upload] --> B[Text Extraction]
-    B --> C[Chunking]
-    C --> D[SentenceTransformer Embeddings]
-    D --> E[Qdrant Vector Store]
-    F[User Query] --> G[Query Embedding]
-    G --> E
-    E --> H[Top-k Retrieved Chunks]
-    H --> I[Ollama LLM]
-    I --> J[Grounded Answer + Sources]
+    A[Browser UI] --> B[Next.js Frontend]
+    B --> C[Next.js API Proxy Routes]
+    C --> D[FastAPI Backend]
+
+    D --> E[PDF/TXT Upload]
+    E --> F[Text Extraction]
+    F --> G[Chunking]
+    G --> H[SentenceTransformer Embeddings]
+    H --> I[Qdrant Vector Store]
+
+    J[User Question] --> B
+    D --> K[Query Embedding]
+    K --> I
+    I --> L[Top-k Retrieved Chunks]
+    L --> M[Ollama LLM]
+    M --> N[Answer + Sources + Scores]
+    N --> B
 ```
+
+---
 
 ## Project Structure
 
 ```text
-RAG-CHATBOT/
+rag-chatbot/
 ├── app/
-│   ├── main.py                 # FastAPI routes
-│   ├── config.py               # Environment-based configuration
-│   ├── schemas.py              # Request schemas
+│   ├── main.py                    # FastAPI routes
+│   ├── config.py                  # Environment-based configuration
+│   ├── schemas.py                 # Request schemas
 │   └── services/
-│       ├── document_loader.py  # PDF/TXT text extraction
-│       ├── chunker.py          # Text chunking
-│       ├── embedder.py         # SentenceTransformer embeddings
-│       ├── vector_store.py     # Qdrant collection and search logic
-│       ├── rag_pipeline.py     # Retrieval + Ollama answer generation
-│       └── evaluator.py        # Retrieval evaluation metrics
+│       ├── document_loader.py     # PDF/TXT text extraction
+│       ├── chunker.py             # Text chunking
+│       ├── embedder.py            # SentenceTransformer embeddings
+│       ├── vector_store.py        # Qdrant collection/search/document listing
+│       ├── rag_pipeline.py        # Retrieval + Ollama answer generation
+│       └── evaluator.py           # Retrieval evaluation metrics
+│
+├── frontend/
+│   ├── app/
+│   │   ├── page.tsx               # Main React UI
+│   │   └── api/
+│   │       ├── upload/route.ts    # Proxy to FastAPI /documents/upload
+│   │       ├── documents/route.ts # Proxy to FastAPI /documents
+│   │       └── query/route.ts     # Proxy to FastAPI /query
+│   ├── package.json
+│   └── .env.local
+│
 ├── data/
-│   └── uploads/                # Local documents for tuning/evaluation
+│   └── uploads/                   # Local documents for tuning/evaluation
+│
 ├── evaluation/
-│   ├── eval_questions.jsonl    # Evaluation questions and expected source pages
-│   ├── tune_retrieval.py       # Retrieval tuning script
-│   ├── tuning_results.csv      # Retrieval tuning output
-│   ├── run_faithfulness_eval.py
+│   ├── eval_questions.jsonl       # Evaluation questions and expected answers/sources
+│   ├── tune_retrieval.py          # Automated retrieval tuning script
+│   ├── tuning_results.csv         # Retrieval tuning output
+│   ├── run_faithfulness_eval.py   # Generates review CSV from /query outputs
 │   ├── faithfulness_review.csv
 │   └── faithfulness_review_filled.csv
+│
 ├── docker-compose.yml
 ├── Dockerfile
-└── requirements.txt
-
+├── requirements.txt
+└── README.md
 ```
+
+---
 
 ## Prerequisites
 
-Install the following before running the project:
+Install:
 
 - Docker and Docker Compose
-- Python 3.12, if running locally without Docker
-- Ollama, for local LLM generation
+- Node.js 18+ for the Next.js frontend
+- Ollama for local LLM generation
 
-Pull an Ollama model before using the `/query` endpoint:
+Pull an Ollama model:
 
 ```bash
-ollama pull llama3.1
+ollama pull llama3.1:8b
 ```
 
-The default Docker Compose configuration uses:
+Start Ollama if it is not already running:
+
+```bash
+ollama serve
+```
+
+The backend container calls Ollama on the host machine using:
 
 ```text
 OLLAMA_BASE_URL=http://host.docker.internal:11434
-OLLAMA_MODEL=llama3.1
 ```
 
-On Windows and macOS, `host.docker.internal` usually allows the API container to call Ollama running on the host machine. On Linux, you may need to add host-gateway configuration or run Ollama in a container on the same Docker network.
+On Windows and macOS, `host.docker.internal` usually works by default. On Linux, you may need to add host-gateway configuration or run Ollama in Docker on the same network.
 
-## Quick Start with Docker Compose
+---
 
-Start Qdrant and the FastAPI backend:
+## Quick Start
+
+### 1. Start the backend and Qdrant
+
+From the project root:
 
 ```bash
 docker compose up --build
 ```
 
-The API should be available at:
+The FastAPI backend runs at:
 
 ```text
 http://localhost:8000
 ```
 
-Open the interactive API documentation:
+FastAPI Swagger documentation:
 
 ```text
 http://localhost:8000/docs
 ```
 
-Check that the backend is running:
+Qdrant dashboard:
+
+```text
+http://localhost:6333/dashboard
+```
+
+Health check:
 
 ```bash
 curl http://localhost:8000/health
@@ -131,68 +197,86 @@ Expected response:
 }
 ```
 
-## Local Development Setup
+### 2. Start the frontend
 
-Install dependencies:
-
-```bash
-pip install -r requirements.txt
-```
-
-Start Qdrant using Docker:
+In a second terminal:
 
 ```bash
-docker run -p 6333:6333 -v qdrant_data:/qdrant/storage qdrant/qdrant:latest
+cd frontend
+npm install
+npm run dev
 ```
 
-Start the FastAPI backend:
+The frontend runs at:
 
-```bash
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```text
+http://localhost:3000
 ```
 
-## Configuration
+Create `frontend/.env.local` if it does not already exist:
 
-The project reads configuration values from environment variables in `app/config.py`.
+```env
+RAG_API_BASE_URL=http://localhost:8000
+```
 
-| Variable | Default | Purpose |
-|---|---:|---|
-| `QDRANT_HOST` | `localhost` | Qdrant hostname |
-| `QDRANT_PORT` | `6333` | Qdrant port |
-| `COLLECTION_NAME` | `rag_chunks` | Qdrant collection name |
-| `EMBEDDING_MODEL` | `sentence-transformers/all-MiniLM-L6-v2` | SentenceTransformer model |
-| `CHUNK_SIZE` | `800` | Number of characters per chunk |
-| `CHUNK_OVERLAP` | `120` | Overlap between neighbouring chunks |
-| `TOP_K` | `5` | Default number of retrieved chunks |
-| `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama server URL |
-| `OLLAMA_MODEL` | `qwen3:8b` | Ollama model name |
+---
 
-The Docker Compose file overrides several defaults for the containerized setup:
+## Docker Compose Configuration
+
+The backend is configured through environment variables in `docker-compose.yml`.
+
+Recommended final retrieval settings from tuning:
 
 ```yaml
-CHUNK_SIZE=600
-CHUNK_OVERLAP=100
-TOP_K=8
-OLLAMA_BASE_URL=http://host.docker.internal:11434
-OLLAMA_MODEL=llama3.1
+environment:
+  - QDRANT_HOST=qdrant
+  - QDRANT_PORT=6333
+  - COLLECTION_NAME=rag_chunks
+  - CHUNK_SIZE=600
+  - CHUNK_OVERLAP=100
+  - TOP_K=8
+  - PYTHONPATH=/app
+  - OLLAMA_BASE_URL=http://host.docker.internal:11434
+  - OLLAMA_MODEL=llama3.1:8b
 ```
+
+If you change `CHUNK_SIZE` or `CHUNK_OVERLAP`, clear Qdrant and re-upload documents because old chunks were created using the previous settings:
+
+```bash
+docker compose down -v
+docker compose up --build --force-recreate
+```
+
+To verify the backend is reading the correct environment values:
+
+```bash
+docker compose exec api python -c "from app.config import CHUNK_SIZE, CHUNK_OVERLAP, TOP_K; print(CHUNK_SIZE, CHUNK_OVERLAP, TOP_K)"
+```
+
+Expected output:
+
+```text
+600 100 8
+```
+
+---
+
+## API Endpoints
+
+| Endpoint | Method | Purpose |
+|---|---:|---|
+| `/health` | GET | Check backend health |
+| `/documents/upload` | POST | Upload and index a PDF/TXT document |
+| `/documents` | GET | List indexed documents |
+| `/retrieve` | POST | Retrieve source chunks without LLM generation |
+| `/query` | POST | Retrieve context and generate an answer |
+| `/evaluate/retrieval` | POST | Run retrieval evaluation |
+
+---
 
 ## API Usage
 
 ### 1. Upload and index a document
-
-Endpoint:
-
-```text
-POST /documents/upload
-```
-
-Supported file types:
-
-- `.pdf`
-- `.txt`
-
-Example using `curl`:
 
 ```bash
 curl -X POST "http://localhost:8000/documents/upload" \
@@ -210,24 +294,38 @@ Example response:
 }
 ```
 
-### 2. Retrieve relevant chunks only
+### 2. List indexed documents
 
-Endpoint:
-
-```text
-POST /retrieve
+```bash
+curl http://localhost:8000/documents
 ```
 
-Use this when you want to inspect retrieval results without calling the LLM.
+Example response:
 
-Example request:
+```json
+{
+  "documents": [
+    {
+      "doc_id": "4bb7e52e-2d5e-4b42-bbcb-42fb42e62563",
+      "filename": "example.pdf",
+      "chunk_count": 42,
+      "page_count": 12,
+      "pages": [1, 2, 3, 4]
+    }
+  ]
+}
+```
+
+### 3. Retrieve relevant chunks only
+
+Use `/retrieve` to inspect semantic search results before answer generation.
 
 ```bash
 curl -X POST "http://localhost:8000/retrieve" \
   -H "Content-Type: application/json" \
   -d '{
     "query": "What are the core components of an AI agent?",
-    "top_k": 5
+    "top_k": 8
   }'
 ```
 
@@ -236,7 +334,7 @@ Optional document filtering:
 ```json
 {
   "query": "What are the core components of an AI agent?",
-  "top_k": 5,
+  "top_k": 8,
   "doc_id": "4bb7e52e-2d5e-4b42-bbcb-42fb42e62563"
 }
 ```
@@ -260,15 +358,7 @@ Example response shape:
 }
 ```
 
-### 3. Ask a question with RAG answer generation
-
-Endpoint:
-
-```text
-POST /query
-```
-
-Example request:
+### 4. Ask a question with RAG answer generation
 
 ```bash
 curl -X POST "http://localhost:8000/query" \
@@ -304,23 +394,13 @@ Example response shape:
 }
 ```
 
-### 4. Evaluate retrieval quality
-
-Endpoint:
-
-```text
-POST /evaluate/retrieval
-```
-
-This endpoint evaluates retrieval against `evaluation/eval_questions.jsonl` using the currently indexed Qdrant collection.
-
-Example:
+### 5. Evaluate retrieval quality
 
 ```bash
 curl -X POST "http://localhost:8000/evaluate/retrieval"
 ```
 
-Example response shape:
+Example response from the final tuned configuration:
 
 ```json
 {
@@ -334,37 +414,69 @@ Example response shape:
 }
 ```
 
-## Retrieval Evaluation
+---
 
-The repository includes a retrieval tuning script:
+## Frontend Usage
 
-```bash
-python evaluation/tune_retrieval.py
-```
-
-The script tests multiple chunking and top-k configurations, re-indexes the uploaded documents, evaluates retrieval against manually prepared questions, and writes results to:
+Open:
 
 ```text
-evaluation/tuning_results.csv
+http://localhost:3000
 ```
 
-The best recorded configuration in the included tuning output is:
+The UI supports:
 
-| Chunk size | Chunk overlap | Top-k | Total chunks | Answerable questions | Correct retrievals | Recall | MRR | Avg retrieval latency |
+1. **Upload PDF/TXT**  
+   Select a document and upload it to the FastAPI backend. The backend extracts text, chunks the content, embeds the chunks, and stores them in Qdrant.
+
+2. **View indexed documents**  
+   The UI calls `/documents` and displays each indexed document with its filename, document ID, page count, and chunk count.
+
+3. **Ask a question**  
+   The UI sends the question to `/query`, which performs retrieval and calls the Ollama LLM.
+
+4. **Inspect the answer**  
+   The answer is shown together with latency.
+
+5. **Inspect sources**  
+   The UI displays retrieved filenames, page numbers, source references, similarity scores, and expandable source chunk text.
+
+---
+
+## Retrieval Evaluation
+
+The repository includes an automated retrieval tuning script:
+
+```bash
+docker compose exec api python evaluation/tune_retrieval.py
+```
+
+The script:
+
+1. Tries multiple `chunk_size`, `chunk_overlap`, and `top_k` settings
+2. Re-indexes documents for each configuration
+3. Evaluates retrieval against `evaluation/eval_questions.jsonl`
+4. Writes results to `evaluation/tuning_results.csv`
+
+Best recorded tuning result:
+
+| Chunk size | Chunk overlap | Top-K | Total chunks | Answerable questions | Correct retrievals | Recall | MRR | Avg retrieval latency |
 |---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | 600 | 100 | 8 | 552 | 95 | 85 | 0.8947 | 0.6662 | 5.40 ms |
 
-This result suggests that retrieving more chunks improved recall compared with `top_k=5`, while using `chunk_size=600` and `chunk_overlap=100` provided a strong balance between retrieval coverage and efficiency.
+This configuration was selected because it achieved the highest recall among tested settings while avoiding unnecessary extra context compared with `top_k=10`.
 
-## Faithfulness Review
+---
 
-The project also supports manual review of generated answers:
+## Faithfulness and Answer Quality Evaluation
+
+After connecting the Ollama LLM, generated answers were reviewed manually using:
 
 ```bash
-python evaluation/run_faithfulness_eval.py
+docker compose exec api python evaluation/run_faithfulness_eval.py
 ```
 
-This script sends each evaluation question to the `/query` endpoint and writes a CSV for review:
+This creates:
 
 ```text
 evaluation/faithfulness_review.csv
@@ -385,10 +497,119 @@ The review file includes:
 | `faithful` | Manual faithfulness label |
 | `notes` | Reviewer comments |
 
-Suggested labels:
+Scoring rules:
 
-- `answer_correct = 1` if the generated answer matches the expected answer sufficiently
+- `answer_correct = 1` if the generated answer sufficiently matches the expected answer
 - `answer_correct = 0` if the answer is wrong, incomplete, or misleading
-- `faithful = 1` if the answer is supported by the retrieved context
-- `faithful = 0` if the answer contains unsupported claims or contradicts the context
+- `faithful = 1` if every factual claim is supported by the retrieved context
+- `faithful = 0` if the answer contains unsupported claims or contradicts the retrieved context
+
+Final reviewed results:
+
+| Metric | Result |
+|---|---:|
+| Answer correctness | 85 / 98 = 86.73% |
+| Faithfulness | 96 / 98 = 97.96% |
+| Correct and faithful | 84 / 98 = 85.71% |
+
+Interpretation:
+
+- The high faithfulness score indicates that the LLM generally stayed grounded in the retrieved context.
+- The lower correctness score indicates that remaining errors were mostly due to retrieval misses, incomplete answers, or cases where the retrieved context did not contain enough information.
+
+---
+
+## Current Evaluation Summary
+
+| Component | Metric | Result |
+|---|---:|---:|
+| Retrieval | Recall@8 | 0.8947 |
+| Retrieval | MRR | 0.6662 |
+| Retrieval | Average retrieval latency | 5.40 ms |
+| Answer generation | Answer correctness | 86.73% |
+| Answer grounding | Faithfulness | 97.96% |
+| End-to-end RAG | Correct and faithful answers | 85.71% |
+
+---
+
+## Troubleshooting
+
+### FastAPI cannot import `app`
+
+Run scripts with `PYTHONPATH=/app` inside Docker:
+
+```bash
+docker compose exec api sh -c "PYTHONPATH=/app python evaluation/tune_retrieval.py"
+```
+
+Or add this to the API service environment:
+
+```yaml
+- PYTHONPATH=/app
+```
+
+### Docker Compose values are not being used
+
+Check the values inside the container:
+
+```bash
+docker compose exec api python -c "from app.config import CHUNK_SIZE, CHUNK_OVERLAP, TOP_K; print(CHUNK_SIZE, CHUNK_OVERLAP, TOP_K)"
+```
+
+If the output is wrong, recreate the container:
+
+```bash
+docker compose down
+docker compose up --build --force-recreate
+```
+
+### Old chunks remain after changing chunk settings
+
+Clear Qdrant and re-index:
+
+```bash
+docker compose down -v
+docker compose up --build --force-recreate
+```
+
+### Ollama connection fails from Docker
+
+Check that Ollama is running on the host:
+
+```bash
+curl http://localhost:11434/api/tags
+```
+
+Check from inside the API container:
+
+```bash
+docker compose exec api python -c "import requests; print(requests.get('http://host.docker.internal:11434/api/tags').text)"
+```
+
+If the model is missing:
+
+```bash
+ollama pull llama3.1:8b
+```
+
+### `/retrieve` or `/query` defaults to the wrong top-k
+
+Make sure `schemas.py` imports `TOP_K` and uses it as the default:
+
+```python
+from app.config import TOP_K
+
+class RetrieveRequest(BaseModel):
+    query: str
+    top_k: int = TOP_K
+    doc_id: Optional[str] = None
+
+class QueryRequest(BaseModel):
+    query: str
+    top_k: int = TOP_K
+```
+
+Also ensure `main.py` uses `TOP_K` for `/evaluate/retrieval` instead of a hardcoded `5`.
+
+---
 
