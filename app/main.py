@@ -78,3 +78,10 @@ def evaluate_retrieval_endpoint():
         vector_store=vector_store,
         top_k=TOP_K
     )
+
+
+@app.get("/documents")
+def list_documents():
+    return {
+        "documents": vector_store.list_documents()
+    }

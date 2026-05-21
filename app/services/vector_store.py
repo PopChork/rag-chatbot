@@ -117,3 +117,59 @@ class VectorStore:
             }
             for hit in results
         ]
+    
+    def list_documents(self):
+        docs = {}
+        offset = None
+
+        while True:
+            records, next_offset = self.client.scroll(
+                collection_name=self.collection_name,
+                limit=1000,
+                offset=offset,
+                with_payload=True,
+                with_vectors=False
+            )
+
+            for record in records:
+                payload = record.payload or {}
+
+                doc_id = payload.get("doc_id")
+                filename = payload.get("filename")
+                page = payload.get("page")
+
+                if not doc_id or not filename:
+                    continue
+
+                if doc_id not in docs:
+                    docs[doc_id] = {
+                        "doc_id": doc_id,
+                        "filename": filename,
+                        "chunk_count": 0,
+                        "pages": set()
+                    }
+
+                docs[doc_id]["chunk_count"] += 1
+
+                if page is not None:
+                    docs[doc_id]["pages"].add(page)
+
+            if next_offset is None:
+                break
+
+            offset = next_offset
+
+        result = []
+
+        for doc in docs.values():
+            pages = sorted(doc["pages"])
+
+            result.append({
+                "doc_id": doc["doc_id"],
+                "filename": doc["filename"],
+                "chunk_count": doc["chunk_count"],
+                "page_count": len(pages),
+                "pages": pages
+            })
+
+        return sorted(result, key=lambda x: x["filename"])
